@@ -251,10 +251,15 @@ class EvalClass:
     for dir_name in os.listdir( self.lab_dir ):
       student_lab_dir = str( join( self.lab_dir, dir_name ) )
       student_id = str( self.get_lab_id( dir_name ) )
-      print( f"Evaluating {student_lab_dir} for {student_id}" )
+      student_log_dir = str( join( self.log_dir, dir_name ) )
+      if isdir( student_log_dir ) is False:
+        os.makedirs( student_log_dir )
+      print( f"Evaluating {student_lab_dir} for {student_id}, log dir {student_log_dir}" )
       subprocess.run( [ "lab_eval_lab",  "--conf",  str( self.lab_conf ),\
-                        "--lab_id", student_id, "--log_dir", str( self.log_dir ),\
+                        "--lab_id", student_id, "--log_dir", student_log_dir,\
                         "--json_score_list", str( self.json_score_list ), student_lab_dir ] )
+    log_archive = str( join( join( self.log_dir, os.pardir ), os.path.basename( self.log_dir ) ) )
+    shutil.make_archive( log_archive, 'zip', str( self.log_dir ) )
 
   def detect_same_files( self,  file_name_list=[] ):
     """ reports identical files with same hash 
