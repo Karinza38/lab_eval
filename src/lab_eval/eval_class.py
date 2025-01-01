@@ -315,52 +315,6 @@ class ScoreList:
     if eval_lab_obj is None :
       self.eval_lab_obj = eval_lab.EvalLab( json_score_list=json_score_list )
 
-  def init_from_moodle_json( self, moodle_json_path, \
-#                  json_score_list_path='./json_score_list.json',
-                      max_total_score=None ):
-  
-    """ initializes score_list from a moodle score list format
-
-    When a test is performed on moddle, we can export the results in a json file, 
-    but this resulting file does not have the format of the score_list. 
-    This function initiates a ScoreList object.
-
-    Args:
-      moodle_json_path (str): the path of the moodle json file
-      json_score_list_path (str): the file of the output json_score_list_path.
-        By default, the output file is './json_score_list.json'.
-      max_total_score (int): the maximum score. Thisis usefull to derive 
-        the grade as as percentage. By default the highest score is considered.  
-    """
-
-    json_score_list = {}
-
-    with open( moodle_json_path, 'rt', encoding='utf8' ) as f:
-      moodle_list = json.loads( f.read( ) )[ 0 ]
-     
-    for moodle_student in moodle_list:
-      question_dict = {}
-      question_index = 1
-      for k in moodle_student.keys() :
-        if k[0] == 'q':
-          ## moodle by default writtes numbers like "2,3" instead of "2.3"
-          ### we ensure the format is appropriated
-          ## In some cases the value is also "-" which is replaced by 0
-# print( f"moodle_student: {moodle_student}" )
-          v = moodle_student[ k ]
-          if v == '-':
-            v = 0
-          else:
-            v = v.replace( ',', '.' )
-          question_dict[ question_index ] = float( v )
-          question_index += 1
-      ## the current format seems to have changed    
-      ## if len( question_dict.keys() ) == 0:    
-      json_score_list[ moodle_student[ 'nomdutilisateur' ] ] = question_dict
-
-    self.record_score_list( json_score_list  )
-    self.finalize( max_total_score=max_total_score )
-
   def init_from_file( json_score_list_path, conf_path=None ):
     """ initialize Scorelist from conf and json file_name
 
@@ -374,9 +328,6 @@ class ScoreList:
     json_score_list = os.path.abspath( os.path.expanduser( json_score_list_path ) ) 
   
     config = configparser.ConfigParser()
-#    print( f"::: conf_path: {conf_path}" )
-#    print( f"::: conf_path:expanduser {os.path.expanduser( conf_path )}" )
-#    print( f"::: conf_path:abs(expanduser) {os.path.abspath( os.path.expanduser( conf_path ))}" )
     config.read( os.path.abspath( os.path.expanduser( conf_path ) ) )
   
     ## getting element that describe the class object to evaluate
@@ -393,11 +344,9 @@ class ScoreList:
     ## interpreter can find the module
     ## The designated class is instantiated from the module
     sys.path.insert(0, os.path.abspath( os.path.expanduser( module_dir ) ) )
-#    print( f"::: sys.path: {sys.path}" )
     specific_lab_module = importlib.import_module( module )
     specific_lab_class = getattr( specific_lab_module, eval_class )
   
-#    self.__init__( json_score_list, specific_lab_class() )
     return ScoreList( json_score_list, specific_lab_class() )
 
   def load_score_list( self, input_file=None ) :
@@ -427,10 +376,8 @@ class ScoreList:
     if initial_file is None:
       initial_file = self.json_score_list
     add_content = self.load_score_list( input_file=added_file )
-#    print( f"::: add_content: {add_content.keys()}" )
     initial_content = self.load_score_list( input_file=initial_file )
     for lab_id in list( add_content.keys() ):
-#      print( f"::: BEFORE initial_content : {initial_content[ lab_id ]}" )
       for question in add_content[ lab_id ].keys():
         if isinstance( add_content[ lab_id ][ question ], ( float, int) ):
           if initial_content[ lab_id ][ question ] is None:
@@ -438,8 +385,6 @@ class ScoreList:
           initial_content[ lab_id ][ question ] += add_content[ lab_id ][ question ]
         else:
           print( f" >>> {lab_id}[ {question} ] : {add_content[ lab_id ][ question ]} not added" )
-#      print( f"::: AFTER initial_content : {initial_content[ lab_id ]}" )
-#print( f"::: initial_content: {initial_content}" )
     self.record_score_list( initial_content, output_file=output_file )
     
     
@@ -463,15 +408,8 @@ class ScoreList:
       ## In order to provide a percentage or a grade, we need
       ## the scoring scheme. This is the reason we initialize a 
       ## lab
-#      print( f"type( self.eval_lab_obj ) : {type( self.eval_lab_obj )}" )
       self.eval_lab_obj.score = score_list[ lab_id ]         
-#      lab = self.eval_lab_class( None, None, \
-#                          self.instructor_dir, \
-#                          json_score_list=self.json_score_list, \
-#                          lab_id=lab_id )
-#      lab.compute_grade( )
       self.eval_lab_obj.compute_grade( max_total_score=max_total_score )
-#      print( f" self.eval_lab_obj.compute_grade( ) : {self.eval_lab_obj.score }" )
       score_list[ lab_id ] = self.eval_lab_obj.score  
       total_grade = self.eval_lab_obj.score[ "grade (total)" ]
       max_grade = max( total_grade, max_grade ) 
@@ -535,71 +473,6 @@ class ScoreList:
         grade[ "h grade (%)" ] = h_std / std * ( grade[ "grade (%)" ] - mean_grade_perc ) + h_mean
         grade_list[ lab_id ] = grade
     self.record_score_list( grade_list )
-
-#  def set_xls_grades( self, lab_id, score_list ):
-#    try:
-#      return score_list[ lab_id ][ "grade (%)" ]
-#    except KeyError:
-#      return lab_id
-
-  def export_xls( self, xls_file, student_id_row=17, student_id_col=0, sheet_name="grade" ):
-    """ complete the xls sheet with the grades
-
-    xls sheet contains a columns of student_ids which starts at student_id_row,
-   student_id_column. 
-   This function extracts the column, computes the grades and then fill the grades
-   in grade_columns in the orifignal file. 
-
-   Note that we have not been able to find a way to complete the existing sheet, 
-   so instead we just create a new sheet.
-
-    Args:
-      xls_file (path): the file from which students ids are read and grades are completed.
-      student_id_row (int): the row where the first students id is 
-      student_id_col (int): the column where the first student_id is
-      grade_col (int): the column where the grades are placed.
-    """
-
-    score_list = self.load_score_list( )
-#    print( score_list.keys() )
-#    print( 'casb1901' in score_list.keys() )
-#    print( score_list[ 'casb1901' ] )
-    def get_score( student_id ):
-      if student_id in score_list.keys(): 
-        grade = score_list[ student_id ][ "grade (%)" ] 
-      else:
-        grade = 0
-      return grade
-##    ##df = pd.read_excel('notes-INF808Gr18-A2023.xlsx', engine='openpyxl', usecols='A')
-##    ##df = pd.read_excel( xls_file, engine='openpyxl', headers=15 )
-##    ## get the list of student student_row, student_col
-    ## the engine needs to be specified to read xls (at leats the new format)
-    ## we need to read -2 as the first row being read is interpreted as the header
-    ## in our case the header contains the name o fthe column and is overwritten 
-    df = pd.read_excel( xls_file, engine='openpyxl', header=student_id_row - 2,\
-                        usecols=[ student_id_col ], names=[ "students_id" ] )
-    ## removing NaN
-    df = df.dropna( )
-#    print( f"df: {df}" )
-#    print( "----" )
-#    print( f"{df.dtypes}" )
-#    print( "----" )
-#    print( f"{df.head}" )
-#    print( "----" )
-    #df[ "grade (%)" ] = df[ "student_id" ].apply( lambda x: score_list[ str(x) ][ "grade (%)" ], axis=1 ) 
-    
-    df[ "grade (%)" ] = df[ "students_id" ].apply(  get_score ) 
-    
-##    ## df[ destination_col ] = df[ student_col_id].apply( lambda x: self.set_xls_grades( x, score_list ) ) 
-## df.to_excel( xls_file, engine='openpyxl' )
-    df.to_excel( './grade_' + sheet_name + '.xls', engine='openpyxl' )
-#    with pd.ExcelWriter(xls_file, mode="a", engine="openpyxl") as writer:
-#      df.to_excel( writer, engine='openpyxl', sheet_name=sheet_name )
-#        ## header=None, \
-#        ## columns=[ "student_id", "grade (%)" ], index=False sheet_name=sheet_name)
-#                ## sheetstartrow=student_id_row - 1, \
-#                ## startcol=grade_col, index=False )   
-#      writer.save()
 
   def notify_students( self, student_db, project_name=""):
     """lists the students for which an evaluation has been performed
@@ -773,34 +646,6 @@ def lab_eval_class():
   project_name = os.path.dirname( class_dir )
   score_list.notify_students( student_db, project_name=project_name)
 
-## init_from file should be moved to ScoreList
-## 
-###def init_score_list( conf_path, json_score_list_path ):
-###
-###  json_score_list = os.path.abspath( os.path.expanduser( json_score_list_path ) ) 
-###
-###  config = configparser.ConfigParser()
-###  config.read( os.path.abspath( os.path.expanduser( conf_path ) ) )
-###
-###  ## getting element that describe the class object to evaluate
-###  ## the various instances of the labs.
-###  ## we need this class to compute the grades 
-###  eval_class = config['LabEvaluationClass']['eval_class']
-###  module = config['LabEvaluationClass']['module']
-###  module_dir = os.path.abspath( os.path.expanduser( \
-###                 config['LabEvaluationClass']['module_dir'] ))
-###  ### import the class the represents the evaluation (from conf )
-###  ## The following lines intend to instantiate the module
-###  ## lab_caesar.EvalCaesarLab lab_babyesp.EvalBabyESP
-###  ## The module_dir is added to the path so the python
-###  ## interpreter can find the module
-###  ## The designated class is instantiated from the module
-###  sys.path.insert(0, os.path.abspath( module_dir ) )
-###  specific_lab_module = importlib.import_module( module )
-###  specific_lab_class = getattr( specific_lab_module, eval_class )
-###
-###  return ScoreList( json_score_list, specific_lab_class() )
-
 def lab_finalize_grades( ):
   description = """ computes grades 
 
@@ -818,31 +663,6 @@ def lab_finalize_grades( ):
   args = parser.parse_args()
 
   score_list = ScoreList.init_from_file( args.json_score_list[ 0 ], args.conf[ 0 ] )
-
-##  json_score_list = os.path.abspath( os.path.expanduser( args.json_score_list[ 0 ] ) ) 
-##
-##  config = configparser.ConfigParser()
-##  config.read( os.path.abspath( os.path.expanduser(  args.conf[ 0 ] ) ) )
-##
-##  ## getting element that describe the class object to evaluate
-##  ## the various instances of the labs.
-##  ## we need this class to compute the grades 
-##  eval_class = config['LabEvaluationClass']['eval_class']
-##  module = config['LabEvaluationClass']['module']
-##  module_dir = os.path.abspath( os.path.expanduser( \
-##                 config['LabEvaluationClass']['module_dir'] ))
-##  ### import the class the represents the evaluation (from conf )
-##  ## The following lines intend to instantiate the module
-##  ## lab_caesar.EvalCaesarLab lab_babyesp.EvalBabyESP
-##  ## The module_dir is added to the path so the python
-##  ## interpreter can find the module
-##  ## The designated class is instantiated from the module
-##  sys.path.insert(0, os.path.abspath( module_dir ) )
-##  specific_lab_module = importb1	lib.import_module( module )
-##  specific_lab_class = getattr( specific_lab_module, eval_class )
-##
-##  score_list = ScoreList( json_score_list, specific_lab_class() )
-
 
   score_list.finalize( )
 
@@ -868,90 +688,3 @@ def lab_add_score_list():
   score_list = ScoreList.init_from_file( args.json_score_list[ 0 ], args.conf[ 0 ] )
   score_list.add_score_list( args.added_json_score_list[ 0 ] )
   score_list.finalize( )
-
-def lab_export_xls():
-
-  description = """ exports the labs grades to a pre-filled xls file
-
-  This is usually useful to import the grades to the system.
-  """
-  parser = argparse.ArgumentParser( description=description )
-  parser.add_argument( '-conf', '--conf', \
-    type=pathlib.Path, nargs='?', default=None, const=None,\
-    help="configuration file (mandatory)")
-  parser.add_argument( 'json_score_list',  type=pathlib.Path, nargs=1,\
-    help="specifies the score list file (mandatory)" )
-  parser.add_argument( 'xls_file',  type=pathlib.Path, nargs=1,\
-    help="file to be completed. This is the file from where students ids are read.  (mandatory)" )
-  parser.add_argument( '-student_id_row', '--student_id_row',  type=int, nargs='?',\
-    default=17, const=0, help="row index where student id starts" )
-  parser.add_argument( '-student_id_col', '--student_id_col',  type=int, nargs='?',\
-    default=0, const=0, help="row index where student id starts" )
-  parser.add_argument( '-sheet_name', '--sheet_name',  type=ascii, nargs='?', default="grades",\
-    const="grades", help="name of the shee that contains the grades" )
-#  parser.add_argument( '-max_total_score', '--max_total_score',  type=int, nargs='?',\
-#    default=None, const=None, help="indicates the max_total_score (optional). By default it takes the  max 'observed score'" )
-#  parser.add_argument( '-grade_col', '--grade_col',  type=int, nargs='?', default=4,\
-#    const=4, help="column index where grades are written." )
-
-  args = parser.parse_args()
-  print( f"args: {args}" )
-  if args.conf is None :
-    score_list =  ScoreList( args.json_score_list[ 0 ] )
-  else:
-    ## We need here to initialize the Scorelist and then run init_from_file
-    ## the function nneds to be added the 'self' argument.
-    score_list = ScoreList.init_from_file( args.json_score_list[ 0 ], args.conf )
-  ## we initially finalize to ensure the json_score_list remains coherent. 
-  ## we believe this shoudl be handled outside the exportation.
-  ## if so one needs to provide the necessary arguments to finalize.
-  ## score_list.finalize( )
-  ## self.finalize( max_total_score=max_total_score )
-
-  score_list.export_xls( args.xls_file[ 0 ], student_id_row=args.student_id_row,\
-                           student_id_col=args.student_id_col,\
-                           sheet_name=args.sheet_name[1:-1] )
-
-#def moodle_json_to_score_list( moodle_json_path, \
-#                              json_score_list_path='./json_score_list.json',
-#                              max_total_score=None ):
-
-def moodle_json_to_score_list( ):
-  """ put the scores returned by moodle to a score_lits format
-
-      we want to take advanatge of what has been developped with 
-      score_list. Especially with finalize and export_xls facilities. 
-      Exportation to xls is possible directly from moodle, but ther eare 
-      some decimal convesion that makes it hard to handle. 
-  """
-
-  description = """convert moodle_json scores to the score_list format"""
-  parser = argparse.ArgumentParser( description=description )
-  parser.add_argument( 'moodle_json_score_list',  type=pathlib.Path, nargs=1,\
-    help="specifies the moodle score list file (mandatory)" )
-  parser.add_argument( '-json_score_list', '--json_score_list', \
-    type=pathlib.Path, nargs='?', default='./score_list.json',\
-    const='./score_list.json', \
-    help="specifies the score list file (optional). By default ./json_score_list" )
-  parser.add_argument( '-max_total_score', '--max_total_score',  type=int, nargs='?',\
-    default=None, const=None, help="indicates the max_total_score (optional). By default it takes the  max 'observed score'" )
-
-  args = parser.parse_args()
-  print( args )
-  score_list = ScoreList( args.json_score_list )
-  score_list.init_from_moodle_json( args.moodle_json_score_list[ 0 ], \
-     max_total_score=args.max_total_score )
-   
-
-
-
-
-  
-#  score_list = ScoreList( json_score_list, specific_lab_class() )
-#  score_list.finalize( )
-#  score_list.xls( xls_file, student_id_col='A' ):
-
-## if __name__ == "__main__":
-  
-#  lab_eval_class() 
-#  lab_finalize_grades()    
