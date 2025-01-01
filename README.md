@@ -10,26 +10,28 @@ The evaluation results in a grade being assigned to each student as well as a lo
 
 # Installation
 
-```
+```bash
 $ git clone 
 $ cd lab_eval
-$ python3 -m build && pip3 install --force-reinstall dist/pylab_eval-0.0.<version>.tar.gz
+$ python3 -m build && pip3 install --force-reinstall dist/lab_eval-0.0.<version>.tar.gz
 ```
 
 # Usage Example
 
-## Evaluating a single Labs
+## Evaluating a single Lab
 
 Evaluation of the caesar of the student
 
-```
-lab_eval_lab  --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg ./labs/Firstname,_Lastname_5698747_assignsubmission_file_
+```bash
+$ lab_eval_lab  --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg \
+      ./labs/Firstname,_Lastname_5698747_assignsubmission_file_
 ```
 In order to specify the output log file (toto.log):
 Note that we assume that the lab_caesar.cfg specifies that output is placed in a log file by specifying the `log_dir`. This variable is usually commented, in which case, either we should uncomment it or specify it in the command line using `--log_dir <log_dir>`.
 
-```
-lab_eval_lab  --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg --lab_id toto ./labs/Firstname,_Lastname_5698747_assignsubmission_file_
+```bash
+$ lab_eval_lab  --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg \
+      --lab_id toto ./labs/Firstname,_Lastname_5698747_assignsubmission_file_
 ```
 ## Evaluation the class 
 
@@ -41,17 +43,19 @@ The configuration file is located in ~/gitlab/lab_eval/examples/lab_caesar.cfg a
 * the labs submitted by the students "Consulted assignments" > "Download all assignments" - in our case  INF808-AI-Laboratoire1\ Attaques\ cryptographiques\ \(Remise\ des\ devoirs\)-2622297.zip
 
 
-To run the evaluation from the moodle file
+To run the evaluation from the Moodle Zip File
 
 
 ```
-lab_eval_class  --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg  --class_dir lab1   INF808-AI-Laboratoire1\ Attaques\ cryptographiques\ \(Remise\ des\ devoirs\)-2622297.zip 
+$ lab_eval_class  --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg  \
+      --class_dir lab1   INF808-AI-Laboratoire1-2622297.zip 
 ```
 
 In general, we expect that some question are evaluated manually. This can occurs when the lab combines code evaluation as well as a report evaluation. Once the report has been evaluated and the associated scores placed into the `score_list.json` file, we recompute the grades to consider the manually added scores as follows:
 
 ```
-lab_finalize_grades  --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg test_class_dir/score_list.json
+$ lab_finalize_grades  --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg \
+      test_class_dir/score_list.json
 
 ```
 ## Adding to score_files
@@ -61,30 +65,171 @@ One way to do, is to edit the `score_list.json` file directly and add the grade 
 Another way to proceed is to evaluate the PDF report in a separate score_list file `pdf_score_list.json`, and then combine the two files together. To do so we proceed as follows:
 
 ```
-lab_add_score_list --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg score_list.json pdf_score_list.json 
+$ lab_add_score_list --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg \
+      score_list.json pdf_score_list.json 
 ```
 
 ## Generating the grades
 
 
 ```
-lab_finalize_grades --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg score_list.json 
+$ lab_finalize_grades --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg \
+      score_list.json 
 ```
 
-## Exporting in xls
+## Exporting Grades to Genote 
 
-To fill the scores to the University, one needs to complete a xls sheet. 
-The following function extracts the list of students id in a column. Then the corresponding grades are generated before being included again back in the original xls sheet. 
+The University requires that grades be submitted via a specific application referred to as Genote. This application produces particular XLS template files (Genote XLS File) that must be completed and imported as illustrated in Fig 1 below.
 
+<figure>
+<img title="Genote interface to import or export Genote XLS Files" src="./fig/genote_page.png" width="80%">  
+<figcaption>Fig 1. Genote interface to import or export Genote XLS Files</figcaption>
+</figure>
+
+The Genote XLS File represent the administrative grouping of students. However, this administrative framework does not accurately depict the organization of students during a session, nor does it align with the tools employed for student evaluation, such as Moodle or Lab Eval. The grades of students are exported in multiple formats, none of which are compatible with the Genote XLS File.
+
+This section presents various scenarios in which grades are initially exported in a particular format and subsequently converted into a Genote XLS File.
+
+### Importing Grades From a JSON Score List
+
+
+The JSON Score List File serves as the native format for Lab Eval.
+
+If `score_list.json` denotes the JSON Score List File, and `genote.xls` denotes the Genote XLS File, the importation process can be executed as follows:  
 
 ```
-lab_export_xls --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg   --sheet_name lab1 score_list.json  notes-INF808Gr18-A2023.xlsx 
+$ grade_to_genote --type 'score_list' score_list.json  genote.xls
+```
+
+#### Ex: INF808 Lab 
+
+To import the Lab grades into Genote we type the following commands:
 
 ```
-There is still a need to manually copy paste the clumns of the grade_lab1.xls file. The reason is that we have not been able to complete the xls file. Further improvement may consider adding a sheet to the original file or using the concatenating of the dataframes. 
+grade_to_genote --type 'score_list' score_list.json notes-INF808Gr28-A2024.xlsx 
+
+Student_id and grades have been computed in notes-INF808Gr28-A2024--grades.xlsx. To finalize 
+  the exportation to the Genote file, please:
+
+    1. open the Genote file notes-INF808Gr28-A2024.xlsx
+    2. open the newly created file: notes-INF808Gr28-A2024--grades.xlsx 
+    3. copy the column from the newly created file to the Genote file.
+
+```
+
+### Importing Grades From a Moodle XLS Report File (for a single Exam)
+
+A Moodle XLS Report File is an ODS or XLS file that has been exported from the Moodle platform, as illustrated in Fig 2. It is essential to emphasize that this discussion is limited to the situation where only one examination is selected.
+
+<figure>
+<img title="Moodle interface to export Moodle XLS Report Files" src="./fig/moodle_ods_report_page.png" width="40%">  
+<figcaption>Fig 2. Moodle interface to export Moodle XLS Report Files</figcaption>
+</figure>
+ 
+If `grade_moodle_report.ods` denotes the Moodle XLS Report File, and `genote.xls` denotes the Genote XLS File, the importation process can be executed as follows:  
+
+``` 
+$ grade_to_genote --type 'moodle_xls_report' grade_moodle_report.ods  genote.xls
+```
+
+#### Ex: INF808 Intra / Final / Research Projects
+
+To import the grades of the Intra, Final or Research Projects - or any exam evaluated via Moodle - into Genote we type the following commands:
+
+```
+$ grade_to_genote --type 'moodle_xls_report' INF808-AK\ Notes.ods \
+      notes-INF808Gr28-A2024.xlsx 
+
+Student_id and grades have been computed in notes-INF808Gr28-A2024--grades.xlsx. To finalize 
+  the exportation to the Genote file, please:
+
+    1. open the Genote file notes-INF808Gr28-A2024.xlsx
+    2. open the newly created file: notes-INF808Gr28-A2024--grades.xlsx 
+    3. copy the column from the newly created file to the Genote file.
+```
+
+### Importing Grades From a Moodle Exam File (With Questions)
+
+The Moodle Exam File (with Questions) is exported on Moodle as illustrated in Fig 3. 
+
+<figure>
+<img src="./fig/moodle_json_exam_page.png" width="40%">  
+<figcaption>Fig 3. Moodle interface to export Moodle XLS Exam Files</figcaption>
+</figure>
+
+If `grade_moodle_exam.json` denotes the Moodle JSON Exam File, and `genote.xls` denotes the Genote XLS File, the importation process can be executed as follows:  
+
+``` 
+$ grade_to_genote --type 'moodle_json_exam' grade_moodle_exam.json  genote.xls
+```
+
+#### Ex: INF808 Intra / Final 
+
+To import the grades of the Intra, Final or Research Projects - or any exam evaluated via Moodle - into Genote we type the following commands:
+
+```
+$ grade_to_genote --type 'moodle_json_exam' INF808-AK-Examen\ Intra-notes.json \
+      notes-INF808Gr28-A2024.xlsx 
+
+Student_id and grades have been computed in notes-INF808Gr28-A2024--grades.xlsx. To finalize 
+  the exportation to the Genote file, please:
+
+    1. open the Genote file notes-INF808Gr28-A2024.xlsx
+    2. open the newly created file: notes-INF808Gr28-A2024--grades.xlsx 
+    3. copy the column from the newly created file to the Genote file.
+
+```
+
+###  Importing Grades From an XLS File with Group Grades
+
+This section addresses the scenario in which students collaborate in groups. As illustrated in Fig 4, Moodle offers the functionality to form student groups and export these groups as a Moodle JSON Group File.
+
+<figure>
+<img src="./fig/moodle_json_group_page.png" width="40%">
+<figcaption>Fig 4. Moodle interface to export Moodle JSON Group Files</figcaption>
+</figure>
+
+Moodle, on the other hand, does not offer the functionality to assign grades to groups. Instead, grades are allocated directly to individual students. In our scenario, as demonstrated in Fig 5, we utilize an XLS file to assign a specific grade to the group, as shown below. Given that the XLS file is specifically designed for this purpose, it is necessary to specify the relevant columns during the importation process to Genote.
+
+<figure>
+<img src="./fig/xls_group.png" width="80%">
+<figcaption>Fig 5. XLS Files containing the grades of the groups</figcaption>
+</figure>
 
 
-# Real Example
+If `group_grade.xls` denotes the XLS File, `moodle_groups.json` denotes the Moodle JSON Group File, and `genote.xls` denotes the Genote XLS File, the importation process can be executed as follows:  
+
+``` 
+$ grade_to_genote.py --type 'xls_group' --moodle_json_group moodle_groups.json \
+      --group_col 1 --grade_col 2 --row_header 2 --last_row 39 group_grade.xls \
+       genote.xls
+
+```
+
+#### Ex: INF808 Research Projects
+
+For the Research Projects, we applied the following commands:
+
+
+``` 
+$ grade_to_genote --type 'xls_group' --moodle_json_group ./INF808-AL_groups.json \
+      --group_col 1 --grade_col 2 --row_header 2 --last_row 39 \
+      ./Presentations_lundi.xlsx  ./notes-IFT511Gr1-A2024.xlsx
+    WARN unable to find Grade or Group (Test) in XLS file for student migd2401
+    WARN unable to find Grade or Group (Test) in XLS file for student roys2213
+    WARN unable to find Grade or Group (Aucun groupe) in XLS file for student fonr2901
+    WARN unable to find Grade or Group (Aucun groupe) in XLS file for student leey0501
+
+Student_id and grades have been computed in notes-IFT511Gr1-A2024--grades.xlsx. To finalize 
+  the exportation to the Genote file, please:
+
+    1. open the Genote file notes-IFT511Gr1-A2024.xlsx
+    2. open the newly created file: notes-IFT511Gr1-A2024--grades.xlsx 
+    3. copy the column from the newly created file to the Genote file.
+
+```
+  
+# Note Regarding Real Example
 
 ## lab_caesar
 
@@ -128,39 +273,6 @@ with open( 'pdf_score_list.json', 'wt', encoding='utf8' ) as f:
 
 When original files have been saved, we can check `pdf_score_list.json` has not been modified while `lab1/score_list.json` has been modified. 
 
-We need then to generate the xls files that are considered as input to their system Genote. They provide an xls file to be complete. The column that contains the student id is located at row 17 column 0. The following function takes that column and generates the corresponding grades in a file `lab1_grades.xls`. We need then to manually copy/paste the grades to the main file before submitting. 
-In our case, we have two groups so we run the following commands:
-
-```
-lab_export_xls --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg --student_id_row 17 --student_id_col 0  --sheet_name lab1_18 lab1/score_list.json  notes-INF808Gr18-A2023.xlsx
-lab_export_xls --conf ~/gitlab/lab_eval/examples/lab_caesar.cfg --student_id_row 17 --student_id_col 0  --sheet_name lab1_19 lab1/score_list.json  notes-INF808Gr19-A2023.xlsx
-```
-
-## Intra or Final (Entirely performed on Moodle and exported in json)
-
-In this case, the intra is exclusively performed in moodle and we export the results in a json format. That file does not match exactly the format we are using for 'score_list.json'. We could have used the xls format. However, we encoutered a few difficulties described as follows:
-
-* Numbers are using a "2,3" format instead of "2.3" which makes math operations such as addition difficult. In our case, we want to update some questions for exemple that had an error. 
-* We have all students in one file, while we need to import the results per sub groups. 
-
-To convert the json file exported from moodle, we use the following command:
-`max_total_score` is necessary
-
-There are several possible json_files. In our case, the one we consider is the one with all question results. This means "point of each question" needs to be checked.
-
-```
-lab_moodle_to_score_list --max_total_score 37 INF808-AI-Intra-notes.json
-```
-
-The resulting file is 'score_list.json'
-
-We eventually perform some operations. 
-
-```
-lab_export_xls --student_id_row 14 --student_id_col 0  --sheet_name intra_inf808_18 score_list.json  notes-INF808Gr18-A2023.xlsx
-lab_export_xls --student_id_row 14 --student_id_col 0  --sheet_name intra_inf808_19 score_list.json  notes-INF808Gr19-A2023.xlsx
-lab_export_xls --student_id_row 14 --student_id_col 0  --sheet_name intra_ift511_1 score_list.json  notes-IFT511Gr1-A2023.xlsx
-```
 
 ## Lab2 
 
@@ -188,14 +300,6 @@ with open( './score_list.json_script_report', 'wt', encoding='utf8' ) as f:
 To update the grades:
 ```
 lab_finalize_grades --conf ~/gitlab/lab_eval/examples/lab_babyesp.cfg score_list.json_script_report 
-```
-
-To export to genote:
-
-```
-lab_export_xls --student_id_row 14 --student_id_col 0  --sheet_name lab2_inf808_18 score_list.json_script_report  notes-INF808Gr18-A2023.xlsx
-lab_export_xls --student_id_row 14 --student_id_col 0  --sheet_name lab2_inf808_19 score_list.json_script_report  notes-INF808Gr19-A2023.xlsx
-lab_export_xls --student_id_row 14 --student_id_col 0  --sheet_name lab2_ift511_1 score_list.json_script_report  notes-IFT511Gr1-A2023.xlsx
 ```
 
 ## Individual submissions
@@ -248,4 +352,23 @@ https://github.com/hexatester/moodlepy/blob/master/moodle/mod/assign/assignment.
 * max_score MUST always be provided when using finalize. In many cases, this value is taken from the Evalpy module. We may consider adding it as a metadata in score_list or in a conf file or as an argument to each command line. lab_finalize_grades lab_add_score_list. 
 * column description for genote excel files may be part of a conf file. 
 * initializations of scoreFile list needs to be revised   init_from_file needs a self. 
+
+related to the moodle_file.py
+
+TODO: 
+
+1. We often create directly the ScoreList File with :
+
+```    
+  with open( score_list_path, 'w', encoding='utf8' ) as f:
+      f.write( json.dumps( score_list, indent=2 ) )
+```
+It would be good to instantiate it via ScoreList and we need to be able to instantiates ScoreList this way. This also requires to revisit the way we instantiate ScoreList.
+
+2. Moodle Exam File only takes the format with Questions. We need to see if that works with the other format.
+3. We need to rethink the designation of modules and packages Eval_lab, Eval Class, Lab_Eval
+4. Might be easier to use uid instead of student_id.
+5. We might use a base class for XLS Files or Moodle Files.
+6. Moodle float conversion from "," to "." may not be necessary.
+7. It would be nice to have a NEW XLS Genote File being created, and intermediary files being generated in a temporary directory.   
 

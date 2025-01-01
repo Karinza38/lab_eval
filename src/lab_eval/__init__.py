@@ -1,1 +1,1 @@
-__all__ = [ 'eval_lab', 'eval_class' ]
+__all__ = [ 'eval_lab', 'eval_class', 'moodle_file' ]
